@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hola Mundo - Lector de QR</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        #reader {
+            width: 300px;
+            margin: 0 auto;
+        }
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            width: 50%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+
+    <h1>Hola Mundo</h1>
+    <button id="start-btn">Leer Código QR</button>
+
+    <div id="reader" style="display: none;"></div>
+
+    <h2>Resultados</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Contenido del QR</th>
+            </tr>
+        </thead>
+        <tbody id="qr-result-list">
+        </tbody>
+    </table>
+
+    <script>
+        const startBtn = document.getElementById('start-btn');
+        const reader = document.getElementById('reader');
+        const qrResultList = document.getElementById('qr-result-list');
+        let count = 0;
+
+        startBtn.addEventListener('click', () => {
+            reader.style.display = 'block';
+            startBtn.disabled = true;
+
+            const html5QrCode = new Html5Qrcode("reader");
+
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                count++;
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `<td>${count}</td><td>${decodedText}</td>`;
+                qrResultList.appendChild(newRow);
+
+                html5QrCode.stop().then(() => {
+                    reader.style.display = 'none';
+                    startBtn.disabled = false;
+                }).catch(err => console.error('Error al detener el lector:', err));
+            };
+
+            const config = { fps: 10, qrbox: 250 };
+
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+                .catch(err => {
+                    console.error('Error al iniciar el lector:', err);
+                    startBtn.disabled = false;
+                });
+        });
+    </script>
+
+</body>
+</html>
