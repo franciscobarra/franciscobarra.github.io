@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hola Mundo - Lector de QR</title>
+    <title>Hola Mundo - Lector de QR (Cámara Frontal)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -36,7 +36,7 @@
 <body>
 
     <h1>Hola Mundo</h1>
-    <button id="start-btn">Leer Código QR</button>
+    <button id="start-btn">Leer Código QR (Cámara Frontal)</button>
 
     <div id="reader" style="display: none;"></div>
 
@@ -78,7 +78,8 @@
 
             const config = { fps: 10, qrbox: 250 };
 
-            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+            // Cambiar a cámara frontal
+            html5QrCode.start({ facingMode: "user" }, config, qrCodeSuccessCallback)
                 .catch(err => {
                     console.error('Error al iniciar el lector:', err);
                     startBtn.disabled = false;
