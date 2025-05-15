@@ -1,137 +1,79 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <title>Mapa Interactivo de Posiciones</title>
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hola Mundo - Lector de QR (Cámara Frontal).</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
-        }
-        #reader {
-            width: 300px;
-            margin: 0 auto;
-        }
-        table {
-            margin: 20px auto;
-            border-collapse: collapse;
-            width: 50%;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-        }
-        /* Overlay para solicitar pantalla completa */
-        #fullscreen-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            z-index: 9999;
-        }
-        #fullscreen-overlay button {
-            padding: 15px 30px;
-            font-size: 18px;
-            cursor: pointer;
-        }
+        #map { height: 600px; width: 100%; }
     </style>
-    <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body>
-
-    <!-- Overlay para solicitar pantalla completa -->
-    <div id="fullscreen-overlay">
-        <h2>Presiona el botón para iniciar en pantalla completa</h2>
-        <button id="fullscreen-btn">Iniciar</button>
-    </div>
-
-    <h1>Hola Mundo</h1>
-    <button id="start-btn">Leer Código QR (Cámara Frontal)</button>
-
-    <div id="reader" style="display: none;"></div>
-
-    <h2>Resultados</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Contenido del QR</th>
-            </tr>
-        </thead>
-        <tbody id="qr-result-list">
-        </tbody>
-    </table>
+    <h2>Mapa Interactivo de Posiciones</h2>
+    <label>Fecha Inicio: <input type="datetime-local" id="fechaInicio"></label>
+    <label>Fecha Fin: <input type="datetime-local" id="fechaFin"></label>
+    <button onclick="cargarPuntos()">Cargar Puntos</button>
+    <div id="map"></div>
+    <div id="stats"></div>
 
     <script>
-        const fullscreenBtn = document.getElementById('fullscreen-btn');
-        const fullscreenOverlay = document.getElementById('fullscreen-overlay');
-        const startBtn = document.getElementById('start-btn');
-        const reader = document.getElementById('reader');
-        const qrResultList = document.getElementById('qr-result-list');
-        let count = 0;
+        let map, allPositions = [];
 
-        // Función para solicitar pantalla completa
-        function requestFullscreen() {
-            if (document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen();
-            } else if (document.documentElement.webkitRequestFullscreen) { // Safari
-                document.documentElement.webkitRequestFullscreen();
-            } else if (document.documentElement.msRequestFullscreen) { // IE11
-                document.documentElement.msRequestFullscreen();
-            }
+        function initializeMap() {
+            map = L.map('map').setView([-33.4489, -70.6693], 10);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18
+            }).addTo(map);
         }
 
-        // Al hacer clic en el botón "Iniciar"
-        fullscreenBtn.addEventListener('click', () => {
-            requestFullscreen();
-            fullscreenOverlay.style.display = 'none'; // Ocultar el overlay
-        });
+        async function cargarPuntos() {
+            const fechaInicio = document.getElementById('fechaInicio').value;
+            const fechaFin = document.getElementById('fechaFin').value;
 
-        // Lógica del lector QR
-        startBtn.addEventListener('click', () => {
-            reader.style.display = 'block';
-            startBtn.disabled = true;
+            const response = await fetch('https://webapp.avlchile.cl/httpexp/Ulbotech/', {
+                method: 'POST',
+                headers: { 'Authorization': 'EXYUhHDTpMFwSCaZ0b0LMQWBh0RBTzi0CFHZMey8gHghGq1B2mFp5z5wuJPkyEx3' },
+                body: new URLSearchParams({
+                    call: 'fecha',
+                    desde: fechaInicio,
+                    hasta: fechaFin
+                })
+            });
 
-            const html5QrCode = new Html5Qrcode("reader");
+            const data = await response.json();
+            allPositions = data;
+            mostrarPuntos(data);
+            mostrarEstadisticas(data);
+        }
 
-            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-                count++;
-                const newRow = document.createElement('tr');
-                newRow.innerHTML = `<td>${count}</td><td>${decodedText}</td>`;
-                qrResultList.appendChild(newRow);
+        function mostrarPuntos(data) {
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker) map.removeLayer(layer);
+            });
 
-                html5QrCode.stop().then(() => {
-                    reader.style.display = 'none';
-                    startBtn.disabled = false;
-                }).catch(err => console.error('Error al detener el lector:', err));
-            };
+            data.forEach(position => {
+                if (position.latitud !== 0 && position.longitud !== 0) {
+                    L.marker([position.latitud, position.longitud]).addTo(map)
+                        .bindPopup(`Vehículo: ${position.vehiculo}<br>Fecha: ${position.fecha}<br>Coordenadas: (${position.latitud}, ${position.longitud})`);
+                }
+            });
+        }
 
-            const config = { fps: 10, qrbox: 250 };
+        function mostrarEstadisticas(data) {
+            const statsDiv = document.getElementById('stats');
+            const countZeroPositions = data.filter(p => p.latitud === 0 && p.longitud === 0).length;
+            const repeatedPositions = data.length - new Set(data.map(p => `${p.latitud},${p.longitud}`)).size;
 
-            // Cambiar a cámara frontal
-            html5QrCode.start({ facingMode: "user" }, config, qrCodeSuccessCallback)
-                .catch(err => {
-                    console.error('Error al iniciar el lector:', err);
-                    startBtn.disabled = false;
-                });
-        });
+            statsDiv.innerHTML = `
+                <h3>Estadísticas</h3>
+                <p>Posiciones con latitud y longitud en 0: <strong>${countZeroPositions}</strong></p>
+                <p>Posiciones repetidas: <strong>${repeatedPositions}</strong></p>
+            `;
+        }
+
+        window.onload = initializeMap;
     </script>
-
 </body>
 </html>
